@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useTransition } from "react";
 import * as z from "zod";
 import { LoginSchema } from "../../schemas/index";
 import CardWrapper from "./card-wrapper";
@@ -15,10 +15,15 @@ import {
 } from "../ui/form";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-
-const font = "font-serif";
+import FormError from "../form-error";
+import FormSuccess from "../form-success";
+import { login } from "../../actions/login";
 
 const LoginForm = () => {
+  const [error, setError] = React.useState<string | undefined>("");
+  const [success, setSuccess] = React.useState<string | undefined>("");
+
+  const [isPending, startTransition] = useTransition();
   const form = useForm<z.infer<typeof LoginSchema>>({
     resolver: zodResolver(LoginSchema),
     defaultValues: {
@@ -26,6 +31,21 @@ const LoginForm = () => {
       password: "",
     },
   });
+
+  const onSubmit = (data: z.infer<typeof LoginSchema>) => {
+    setError("");
+    setSuccess("");
+    startTransition(() => {
+      login(data)
+        .then((res) => {
+          setError(res.error);
+          setSuccess(res.success);
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+    });
+  };
 
   return (
     <CardWrapper
@@ -35,10 +55,7 @@ const LoginForm = () => {
       showSocial={true}
     >
       <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(() => {})}
-          className="flex flex-col"
-        >
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col">
           <div className="">
             <FormField
               name="email"
@@ -50,6 +67,7 @@ const LoginForm = () => {
                     <Input
                       {...field}
                       type="email"
+                      disabled={isPending}
                       placeholder="john.doe@example.com"
                       className="font-normal"
                     />
@@ -70,6 +88,7 @@ const LoginForm = () => {
                     <Input
                       {...field}
                       type="password"
+                      disabled={isPending}
                       placeholder="******"
                       className="font-normal"
                     />
@@ -82,7 +101,9 @@ const LoginForm = () => {
             />
           </div>
           <div className="pt-[4px]">
-            <Button type="submit" className="w-full">
+            <FormError message={error} />
+            <FormSuccess message={success} />
+            <Button type="submit" className="w-full" disabled={isPending}>
               Login
             </Button>
           </div>
